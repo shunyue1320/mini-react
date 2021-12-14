@@ -12,10 +12,15 @@ export function createDOM(vdom) {
   let dom;
   if (type === REACT_TEXT) {
     dom = document.createTextNode(props.content);
-  
-    // + 添加一个是函数的判断
+    // 判断：ReactDOM.render 参数1 是函数
   } else if (typeof type === "function") {
-    return mountFunctionComponent(vdom);
+    
+    // + 添加一个是继承 React.Component 类函数的判断
+    if (type.isReactComponent) {
+      return mountClassComponent(vdom);
+    } else {
+      return mountFunctionComponent(vdom);
+    }
   } else {
     dom = document.createElement(type);
   }
@@ -31,11 +36,20 @@ export function createDOM(vdom) {
   return dom;
 }
 
-// + 添加一个方法就是执行这个函数组件 传递组件上的参数
+// + 添加一个方法：执行这个类函数组件上的 render 方法
+function mountClassComponent(vdom) {
+  const { type, props } = vdom;
+  const classInstance = new type(props);
+  const renderVdom = classInstance.render();
+  const dom = createDOM(renderVdom);
+  return dom;
+}
+
+// 执行这个函数组件 传递组件上的参数
 function mountFunctionComponent(vdom) {
-  const { type, props } = vdom
-  const renderVdom = type(props)  // type 就是 FunctionComponent 组件函数
-  return createDOM(renderVdom)
+  const { type, props } = vdom;
+  const renderVdom = type(props); // type 就是 FunctionComponent 组件函数
+  return createDOM(renderVdom);
 }
 
 function updateProps(dom, oldProps = {}, newProps = {}) {
