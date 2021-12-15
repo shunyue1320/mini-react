@@ -60,6 +60,8 @@ function mountForwardComponent(vdom) {
 function mountClassComponent(vdom) {
   const { type, props, ref } = vdom;
   const classInstance = new type(props);
+  //给虚拟DOM添加一个属性classInstance
+  vdom.classInstance = classInstance;
   if (ref) {
     ref.current = classInstance; // 给 React.createRef() 放上 class组件实例
   }
@@ -114,22 +116,144 @@ export function findDOM(vdom) {
   if (vdom.dom) {
     return vdom.dom;
   } else {
-    const renderVdom = vdom.oldRenderVdom;
-    return findDOM(renderVdom);
+    // 如果是类组件，从vdom.classInstance.oldRenderVdom取要渲染的虚拟DOM
+    // 如果是函数组件，从vdom.oldRenderVdom取要渲染的虚拟DOM
+    const oldRenderVdom = vdom.classInstance
+      ? vdom.classInstance.oldRenderVdom
+      : vdom.oldRenderVdom;
+    return findDOM(oldRenderVdom);
   }
 }
 
-// + diff 对比新旧dom 渲染页面
-export function compareTwoVdom(parentDOM, oldVdom, newVdom) {
-  // + 后续会进行 diff 对比
-  const oldDOM = findDOM(oldVdom);
-  const newDOM = createDOM(newVdom);
-  parentDOM.replaceChild(newDOM, oldDOM);
+// 对比新旧dom 渲染页面
+export function compareTwoVdom(parentDOM, oldVdom, newVdom, nextDOM) {
+  if (!oldVdom && !newVdom) {
+    // 1. 老和新都是没有
+    return;
+  } else if (!!oldVdom && !newVdom) {
+    // 2. 老有新没有
+    unMountVdom(oldVdom);
+  } else if (!oldVdom && !!newVdom) {
+    // 3. 老没有新的有
+    let newDOM = createDOM(newVdom);
+    if (nextDOM) {
+      parentDOM.insertBefore(newDOM, nextDOM);
+    } else {
+      parentDOM.appendChild(newDOM);
+    }
+    if (newDOM.componentDidMount) {
+      newDOM.componentDidMount();
+    }
+    return;
+  } else if (!!oldVdom && !!newVdom && oldVdom.type !== newVdom.type) {
+    // 4. 新老都有，但类型不同
+    let newDOM = createDOM(newVdom);
+    unMountVdom(oldVdom);
+    if (newDOM.componentDidMount) {
+      newDOM.componentDidMount();
+    }
+  } else {
+    // 5. 新老都有，类型相同
+    updateElement(oldVdom, newVdom);
+  }
+}
+
+// 作用： 删除子节点 触发 componentWillUnmount 生命周期
+function unMountVdom(vdom) {
+  const { type, props, ref } = vdom;
+  const currentDOM = findDOM(vdom); // 获取此虚拟DOM对应的真实DOM
+  // vdom可能是原生组件span 类组件 classComponent 也可能是函数组件Function
+  if (vdom.classInstance && vdom.classInstance.componentWillUnmount) {
+    vdom.classInstance.componentWillUnmount();
+  }
+  if (ref) {
+    ref.current = null;
+  }
+  // 如果此虚拟DOM有子节点的话，递归全部删除
+  if (props.children) {
+    //得到儿子的数组
+    const children = Array.isArray(props.children)
+      ? props.children
+      : [props.children];
+    children.forEach(unMountVdom);
+  }
+  // 把自己这个虚拟DOM对应的真实DOM从界面删除
+  if (currentDOM) {
+    currentDOM.parentNode.removeChild(currentDOM);
+  }
+}
+
+// 作用： 对比更新 新老节点
+function updateElement(oldVdom, newVdom) {
+  if (oldVdom.type === REACT_TEXT && newVdom.type === REACT_TEXT) {
+    const currentDOM = (newVdom.dom = findDOM(oldVdom));
+    if (oldVdom.props.content !== newVdom.props.content) {
+      currentDOM.textContent = newVdom.props.content;
+    }
+    return;
+  } else if (typeof oldVdom.type === "string") {
+    const currentDOM = (newVdom.dom = findDOM(oldVdom));
+    updateProps(currentDOM, oldVdom.props, newVdom.props);
+    updateChildren(currentDOM, oldVdom.props.children, newVdom.props.children);
+  } else if (typeof oldVdom.type === "function") {
+    if (oldVdom.type.isReactComponent) {
+      newVdom.classInstance = oldVdom.classInstance;
+      updateClassComponent(oldVdom, newVdom);
+    } else {
+      updateFunctionComponent(oldVdom, newVdom);
+    }
+  }
+}
+
+// 作用： 更新子元素 子元素继续 compareTwoVdom 递归对比
+function updateChildren(parentDOM, oldVChildren, newVChildren) {
+  oldVChildren = oldVChildren
+    ? (Array.isArray(oldVChildren) ? oldVChildren : [oldVChildren]).filter(
+        (item) => item
+      )
+    : [];
+
+  newVChildren = newVChildren
+    ? (Array.isArray(newVChildren) ? newVChildren : [newVChildren]).filter(
+        (item) => item
+      )
+    : [];
+
+  let maxLength = Math.max(oldVChildren.length, newVChildren.length);
+  for (let i = 0; i < maxLength; i++) {
+    let nextVdom = oldVChildren.find(
+      (item, index) => index > i && item && findDOM(item)
+    );
+    compareTwoVdom(
+      parentDOM,
+      oldVChildren[i],
+      newVChildren[i],
+      nextVdom && findDOM(nextVdom)
+    );
+  }
+}
+
+// 更新类函数组件 React.Component
+function updateClassComponent(oldVdom, newVdom) {
+  const classInstance = (newVdom.classInstance = oldVdom.classInstance);
+  if (classInstance.componentWillReceiveProps) {
+    classInstance.componentWillReceiveProps(newVdom.props);
+  }
+  classInstance.updater.emitUpdate(newVdom.props);
+}
+
+// 更新函数组件
+function updateFunctionComponent(oldVdom, newVdom) {
+  const parentDOM = findDOM(oldVdom).parentNode;
+  const { type, props } = newVdom;
+  const newRenderVdom = type(props);
+  compareTwoVdom(parentDOM, oldVdom.oldRenderVdom, newRenderVdom);
+  newVdom.oldRenderVdom = newRenderVdom;
 }
 
 function reconcileChildren(childrenVdom, parentDOM) {
   for (let i = 0; i < childrenVdom.length; i++) {
-    let childVdom = childrenVdom[i];
+    const childVdom = childrenVdom[i];
     mount(childVdom, parentDOM);
   }
 }
