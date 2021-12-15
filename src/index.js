@@ -1,18 +1,23 @@
 import React from "./react";
 import ReactDOM from "./react-dom";
-
-class ClassComponent extends React.Component {
+class Counter extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { number: 0 };
+  }
+  handleClick = () => {
+    this.setState({ number: this.state.number + 1 });
+    console.log(this.state);
+  };
   render() {
     return (
-      <div className="title" style={{ color: "red" }}>
-        <h1>{this.props.name}</h1>
-        <h3>{this.props.children}</h3>
+      <div>
+        <p>{this.props.title}</p>
+        <p>number:{this.state.number}</p>
+        <button onClick={this.handleClick}>+</button>
       </div>
     );
   }
 }
 
-ReactDOM.render(
-  <ClassComponent name="hello">world</ClassComponent>,
-  document.getElementById("root")
-);
+ReactDOM.render(<Counter title="计数器" />, document.getElementById("root"));

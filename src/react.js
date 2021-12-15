@@ -29,7 +29,6 @@ function createElement(type, config, children) {
 }
 const React = {
   createElement,
-  // + 导出 类组件继承 class
   Component
 };
 

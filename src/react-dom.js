@@ -14,8 +14,7 @@ export function createDOM(vdom) {
     dom = document.createTextNode(props.content);
     // 判断：ReactDOM.render 参数1 是函数
   } else if (typeof type === "function") {
-    
-    // + 添加一个是继承 React.Component 类函数的判断
+    // 添加一个是继承 React.Component 类函数的判断
     if (type.isReactComponent) {
       return mountClassComponent(vdom);
     } else {
@@ -36,11 +35,13 @@ export function createDOM(vdom) {
   return dom;
 }
 
-// + 添加一个方法：执行这个类函数组件上的 render 方法
+// 添加一个方法：执行这个类函数组件上的 render 方法
 function mountClassComponent(vdom) {
   const { type, props } = vdom;
   const classInstance = new type(props);
   const renderVdom = classInstance.render();
+  // + 缓存旧的 vdom 方便后续 diff 对比
+  classInstance.oldRenderVdom = renderVdom;
   const dom = createDOM(renderVdom);
   return dom;
 }
@@ -49,6 +50,7 @@ function mountClassComponent(vdom) {
 function mountFunctionComponent(vdom) {
   const { type, props } = vdom;
   const renderVdom = type(props); // type 就是 FunctionComponent 组件函数
+  vdom.oldRenderVdom = renderVdom;
   return createDOM(renderVdom);
 }
 
@@ -61,6 +63,8 @@ function updateProps(dom, oldProps = {}, newProps = {}) {
       for (let attr in styleObj) {
         dom.style[attr] = styleObj[attr];
       }
+    } else if (/^on[A-Z].*/.test(key)) {
+      dom[key.toLowerCase()] = newProps[key];
     } else {
       dom[key] = newProps[key];
     }
@@ -71,6 +75,28 @@ function updateProps(dom, oldProps = {}, newProps = {}) {
     }
   }
 }
+
+// + 取dom，先取新 dom 没有才取 旧 vdom 内的 dom
+export function findDOM(vdom) {
+  if (!vdom) {
+    return null;
+  }
+  if (vdom.dom) {
+    return vdom.dom;
+  } else {
+    const renderVdom = vdom.oldRenderVdom;
+    return findDOM(renderVdom);
+  }
+}
+
+// + diff 对比新旧dom 渲染页面
+export function compareTwoVdom(parentDOM, oldVdom, newVdom) {
+  // + 后续会进行 diff 对比
+  const oldDOM = findDOM(oldVdom);
+  const newDOM = createDOM(newVdom);
+  parentDOM.replaceChild(newDOM, oldDOM);
+}
+
 function reconcileChildren(childrenVdom, parentDOM) {
   for (let i = 0; i < childrenVdom.length; i++) {
     let childVdom = childrenVdom[i];
