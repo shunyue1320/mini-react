@@ -1,4 +1,4 @@
-import { REACT_TEXT } from "./constants";
+import { REACT_TEXT, REACT_FORWARD_REF_TYPE } from "./constants";
 import { addEvent } from "./event";
 
 function render(vdom, container) {
@@ -9,9 +9,12 @@ export function mount(vdom, container) {
   container.appendChild(newDOM);
 }
 export function createDOM(vdom) {
-  const { type, props } = vdom;
+  const { type, props, ref } = vdom;
   let dom;
-  if (type === REACT_TEXT) {
+  // 是 react.forwardRef 组件
+  if (type && type.$$typeof === REACT_FORWARD_REF_TYPE) {
+    return mountForwardComponent(vdom);
+  } else if (type === REACT_TEXT) {
     dom = document.createTextNode(props.content);
     // 判断：ReactDOM.render 参数1 是函数
   } else if (typeof type === "function") {
@@ -33,13 +36,28 @@ export function createDOM(vdom) {
     }
   }
   vdom.dom = dom;
+  if (ref) {
+    ref.current = dom; // 给 React.createRef() 放上 dom
+  }
+
   return dom;
+}
+
+// 挂载 react.forwardRef 组件
+function mountForwardComponent(vdom) {
+  let { type, props, ref } = vdom;
+  let renderVdom = type.render(props, ref);
+  vdom.oldRenderVdom = renderVdom;
+  return createDOM(renderVdom);
 }
 
 // 添加一个方法：执行这个类函数组件上的 render 方法
 function mountClassComponent(vdom) {
-  const { type, props } = vdom;
+  const { type, props, ref } = vdom;
   const classInstance = new type(props);
+  if (ref) {
+    ref.current = classInstance  // 给 React.createRef() 放上 class组件实例
+  }
   const renderVdom = classInstance.render();
   // + 缓存旧的 vdom 方便后续 diff 对比
   classInstance.oldRenderVdom = renderVdom;

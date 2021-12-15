@@ -1,17 +1,11 @@
 # mini-react
 迷你版本 react 用于学习
 
+## 为 DOM 元素添加 ref
+1. 可以使用 ref 去存储 DOM 节点的引用
+2. 当 ref 属性用于 HTML 元素时，构造函数中使用 React.createRef() 创建的 ref 接收底层 DOM 元素作为其 current 属性
 
-**State 的更新会被合并 当你调用 setState() 的时候，React 会把你提供的对象合并到当前的 state**
-
-
-### State 的更新可能是异步的
-1. 出于性能考虑，React 可能会把多个 setState() 调用合并成一个调用
-2. 因为 this.props 和 this.state 可能会异步更新，所以你不要依赖他们的值来更新下一个状态
-3. 可以让 setState() 接收一个函数而不是一个对象。这个函数用上一个 state 作为第一个参数
-
-
-### 事件处理
-1. React 事件的命名采用小驼峰式(camelCase),而不是纯小写
-2. 使用 JSX 语法时你需要传入一个函数作为事件处理函数，而不是一个字符串
-3. 你不能通过返回 false 的方式阻止默认行为。你必须显式的使用preventDefault
+## Ref转发
+1. 你不能在函数组件上使用 ref 属性，因为他们没有实例
+2. Ref 转发是一项将 ref 自动地通过组件传递到其一子组件的技巧
+3. Ref 转发允许某些组件接收 ref，并将其向下传递给子组件
