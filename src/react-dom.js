@@ -6,7 +6,12 @@ function render(vdom, container) {
 }
 export function mount(vdom, container) {
   const newDOM = createDOM(vdom);
-  container.appendChild(newDOM);
+  if (newDOM) {
+    //把子DOM挂载到父DOM
+    container.appendChild(newDOM);
+    //执行子DOM的挂载完成事件
+    if (newDOM.componentDidMount) newDOM.componentDidMount();
+  }
 }
 export function createDOM(vdom) {
   const { type, props, ref } = vdom;
@@ -56,12 +61,18 @@ function mountClassComponent(vdom) {
   const { type, props, ref } = vdom;
   const classInstance = new type(props);
   if (ref) {
-    ref.current = classInstance  // 给 React.createRef() 放上 class组件实例
+    ref.current = classInstance; // 给 React.createRef() 放上 class组件实例
+  }
+  if (classInstance.componentWillMount) {
+    classInstance.componentWillMount();
   }
   const renderVdom = classInstance.render();
   // + 缓存旧的 vdom 方便后续 diff 对比
   classInstance.oldRenderVdom = renderVdom;
   const dom = createDOM(renderVdom);
+  if (classInstance.componentDidMount) {
+    dom.componentDidMount = classInstance.componentDidMount.bind(this);
+  }
   return dom;
 }
 
