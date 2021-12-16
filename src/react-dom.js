@@ -1,4 +1,10 @@
-import { REACT_TEXT, REACT_FORWARD_REF_TYPE } from "./constants";
+import {
+  REACT_TEXT,
+  REACT_FORWARD_REF_TYPE,
+  PLACEMENT,
+  MOVE,
+  REACT_FRAGMENT,
+} from "./constants";
 import { addEvent } from "./event";
 
 function render(vdom, container) {
@@ -22,6 +28,8 @@ export function createDOM(vdom) {
   } else if (type === REACT_TEXT) {
     dom = document.createTextNode(props.content);
     // 判断：ReactDOM.render 参数1 是函数
+  } else if (type === REACT_FRAGMENT) {
+    dom = document.createDocumentFragment();
   } else if (typeof type === "function") {
     // 添加一个是继承 React.Component 类函数的判断
     if (type.isReactComponent) {
@@ -35,6 +43,7 @@ export function createDOM(vdom) {
   if (props) {
     updateProps(dom, {}, props);
     if (typeof props.children == "object" && props.children.type) {
+      props.children.mountIndex = 0;
       mount(props.children, dom);
     } else if (Array.isArray(props.children)) {
       reconcileChildren(props.children, dom);
@@ -207,30 +216,90 @@ function updateElement(oldVdom, newVdom) {
 
 // 作用： 更新子元素 子元素继续 compareTwoVdom 递归对比
 function updateChildren(parentDOM, oldVChildren, newVChildren) {
-  oldVChildren = oldVChildren
-    ? (Array.isArray(oldVChildren) ? oldVChildren : [oldVChildren]).filter(
-        (item) => item
-      )
+  oldVChildren = Array.isArray(oldVChildren)
+    ? oldVChildren
+    : oldVChildren
+    ? [oldVChildren].filter((item) => item)
+    : [];
+  newVChildren = Array.isArray(newVChildren)
+    ? newVChildren
+    : newVChildren
+    ? [newVChildren].filter((item) => item)
     : [];
 
-  newVChildren = newVChildren
-    ? (Array.isArray(newVChildren) ? newVChildren : [newVChildren]).filter(
-        (item) => item
-      )
-    : [];
+  const keyedOldMap = {}; // 通过此 map 映射来 diff
+  let lastPlacedIndex = 0; // 标记最后一个匹配到的元素
+  oldVChildren.forEach((oldVChild, index) => {
+    const oldKey = oldVChild.key ? oldVChild.key : index;
+    keyedOldMap[oldKey] = oldVChild;
+  });
 
-  let maxLength = Math.max(oldVChildren.length, newVChildren.length);
-  for (let i = 0; i < maxLength; i++) {
-    let nextVdom = oldVChildren.find(
-      (item, index) => index > i && item && findDOM(item)
-    );
-    compareTwoVdom(
-      parentDOM,
-      oldVChildren[i],
-      newVChildren[i],
-      nextVdom && findDOM(nextVdom)
-    );
-  }
+  const patch = [];
+  newVChildren.forEach((newVChild, index) => {
+    newVChild.mountIndex = index;
+    const newKey = newVChild.key ? newVChild.key : index;
+    const oldVChild = keyedOldMap[newKey];
+
+    // 1. 老列表存在此元素 标记移动
+    if (oldVChild) {
+      updateElement(oldVChild, newVChild);
+      if (oldVChild.mountIndex < lastPlacedIndex) {
+        patch.push({
+          type: MOVE,
+          oldVChild,
+          newVChild,
+          mountIndex: index,
+        });
+      }
+      delete keyedOldMap[newKey];
+      lastPlacedIndex = Math.max(lastPlacedIndex, oldVChild.mountIndex);
+
+      // 2. 老列表不存在此元素 标记添加
+    } else {
+      patch.push({
+        type: PLACEMENT,
+        newVChild,
+        mountIndex: index,
+      });
+    }
+  });
+
+  // 3. 删除旧元素
+  let moveVChild = patch
+    .filter((action) => action.type === MOVE)
+    .map((action) => action.oldVChild);
+  Object.values(keyedOldMap)
+    .concat(moveVChild)
+    .forEach((oldVChild) => {
+      const currentDOM = findDOM(oldVChild);
+      parentDOM.removeChild(currentDOM);
+    });
+
+  
+  patch.forEach((action) => {
+    const { type, oldVChild, newVChild, mountIndex } = action;
+    const childNodes = parentDOM.childNodes;
+    // 4. 插入新元素
+    if (type === PLACEMENT) {
+      const newDOM = createDOM(newVChild);
+      const childNode = childNodes[mountIndex];
+      if (childNode) {
+        parentDOM.insertBefore(newDOM, childNode);
+      } else {
+        parentDOM.appendChild(newDOM);
+      }
+    
+    // 5. 移动旧元素
+    } else if (type === MOVE) {
+      const oldDOM = findDOM(oldVChild);
+      const childNode = childNodes[mountIndex];
+      if (childNode) {
+        parentDOM.insertBefore(oldDOM, childNode);
+      } else {
+        parentDOM.appendChild(oldDOM);
+      }
+    }
+  });
 }
 
 // 更新类函数组件 React.Component
@@ -254,6 +323,7 @@ function updateFunctionComponent(oldVdom, newVdom) {
 function reconcileChildren(childrenVdom, parentDOM) {
   for (let i = 0; i < childrenVdom.length; i++) {
     const childVdom = childrenVdom[i];
+    childVdom.mountIndex = i;
     mount(childVdom, parentDOM);
   }
 }
