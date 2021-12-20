@@ -4,6 +4,8 @@ import {
   PLACEMENT,
   MOVE,
   REACT_FRAGMENT,
+  REACT_PROVIDER,
+  REACT_CONTEXT,
 } from "./constants";
 import { addEvent } from "./event";
 
@@ -22,8 +24,17 @@ export function mount(vdom, container) {
 export function createDOM(vdom) {
   const { type, props, ref } = vdom;
   let dom;
-  // 是 react.forwardRef 组件
-  if (type && type.$$typeof === REACT_FORWARD_REF_TYPE) {
+
+  // Provider 组件
+  if (type && type.$$typeof === REACT_PROVIDER) {
+    return mountProviderComponent(vdom);
+
+    // Consumer 组件
+  } else if (type && type.$$typeof === REACT_CONTEXT) {
+    return mountConsumerComponent(vdom);
+
+    // 是 react.forwardRef 组件
+  } else if (type && type.$$typeof === REACT_FORWARD_REF_TYPE) {
     return mountForwardComponent(vdom);
   } else if (type === REACT_TEXT) {
     dom = document.createTextNode(props.content);
@@ -57,6 +68,25 @@ export function createDOM(vdom) {
   return dom;
 }
 
+// 挂载 Provider 组件
+function mountProviderComponent(vdom) {
+  const { type, props } = vdom;
+  const context = type._context;
+  context._currentValue = props.value;
+  const renderVdom = props.children;
+  vdom.oldRenderVdom = renderVdom;
+  return createDOM(renderVdom);
+}
+
+// 挂载 Consumer 组件
+function mountConsumerComponent(vdom) {
+  const { type, props } = vdom;
+  const context = type._context;
+  const renderVdom = props.children(context._currentValue);
+  vdom.oldRenderVdom = renderVdom;
+  return createDOM(renderVdom);
+}
+
 // 挂载 react.forwardRef 组件
 function mountForwardComponent(vdom) {
   let { type, props, ref } = vdom;
@@ -69,6 +99,11 @@ function mountForwardComponent(vdom) {
 function mountClassComponent(vdom) {
   const { type, props, ref } = vdom;
   const classInstance = new type(props);
+
+  // 存在 static contextType = ThemeContext; 就给 conext
+  if (type.contextType) {
+    classInstance.context = type.contextType._currentValue;
+  }
   //给虚拟DOM添加一个属性classInstance
   vdom.classInstance = classInstance;
   if (ref) {
@@ -194,8 +229,12 @@ function unMountVdom(vdom) {
 
 // 作用： 对比更新 新老节点
 function updateElement(oldVdom, newVdom) {
-  if (oldVdom.type === REACT_TEXT && newVdom.type === REACT_TEXT) {
-    const currentDOM = (newVdom.dom = findDOM(oldVdom));
+  if (oldVdom.type.$$typeof === REACT_PROVIDER) {
+    updateProviderComponent(oldVdom, newVdom)
+  } else if (oldVdom.type.$$typeof === REACT_CONTEXT) {
+    updateConsumerComponent(oldVdom, newVdom)
+  } else if (oldVdom.type === REACT_TEXT && newVdom.type === REACT_TEXT) {
+    const currentDOM = newVdom.dom = findDOM(oldVdom);
     if (oldVdom.props.content !== newVdom.props.content) {
       currentDOM.textContent = newVdom.props.content;
     }
@@ -212,6 +251,26 @@ function updateElement(oldVdom, newVdom) {
       updateFunctionComponent(oldVdom, newVdom);
     }
   }
+}
+
+// 
+function updateProviderComponent(oldVdom, newVdom) {
+  const parentDOM = findDOM(oldVdom).parentNode;
+  const { type, props } = newVdom
+  const context = type._context;
+  context._currentValue = props.value;
+  const renderVdom = props.children;
+  compareTwoVdom(parentDOM, oldVdom.oldRenderVdom, renderVdom)
+  newVdom.oldRenderVdom = renderVdom;
+}
+
+function updateConsumerComponent(oldVdom, newVdom) {
+  const parentDOM = findDOM(oldVdom).parentNode;
+  const { type, props } = newVdom;
+  const context = type._context;
+  const renderVdom = props.children(context._currentValue);
+  compareTwoVdom(parentDOM, oldVdom.oldRenderVdom, renderVdom);
+  newVdom.oldRenderVdom = renderVdom;
 }
 
 // 作用： 更新子元素 子元素继续 compareTwoVdom 递归对比
@@ -275,7 +334,6 @@ function updateChildren(parentDOM, oldVChildren, newVChildren) {
       parentDOM.removeChild(currentDOM);
     });
 
-  
   patch.forEach((action) => {
     const { type, oldVChild, newVChild, mountIndex } = action;
     const childNodes = parentDOM.childNodes;
@@ -288,8 +346,8 @@ function updateChildren(parentDOM, oldVChildren, newVChildren) {
       } else {
         parentDOM.appendChild(newDOM);
       }
-    
-    // 5. 移动旧元素
+
+      // 5. 移动旧元素
     } else if (type === MOVE) {
       const oldDOM = findDOM(oldVChild);
       const childNode = childNodes[mountIndex];

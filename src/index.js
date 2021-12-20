@@ -1,47 +1,102 @@
 import React from "./react";
 import ReactDOM from "./react-dom";
-class Counter extends React.Component {
-  static defaultProps = {
-    name: "新生命周期",
-  };
-  constructor(props) {
-    super(props);
-    this.state = { number: 0 };
-  }
 
-  handleClick = () => {
-    this.setState({ number: this.state.number + 1 });
-  };
 
+let ThemeContext = React.createContext();
+console.log(ThemeContext);
+const { Provider, Consumer } = ThemeContext;
+let style = { margin: "5px", padding: "5px" };
+function Title(props) {
+  console.log("Title");
+  return (
+    <Consumer>
+      {(contextValue) => (
+        <div style={{ ...style, border: `5px solid ${contextValue.color}` }}>
+          Title
+        </div>
+      )}
+    </Consumer>
+  );
+}
+class Header extends React.Component {
+  static contextType = ThemeContext;
   render() {
-    console.log("3.render");
+    console.log("Header");
     return (
-      <div>
-        <p>{this.state.number}</p>
-        <ChildCounter number={this.state.number} />
-        <button onClick={this.handleClick}>+</button>
+      <div style={{ ...style, border: `5px solid ${this.context.color}` }}>
+        Header
+        <Title />
       </div>
     );
   }
 }
-class ChildCounter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { number: 0 };
-  }
-  static getDerivedStateFromProps(nextProps, prevState) {
-    const { number } = nextProps;
-    // 当传入的type发生变化的时候，更新state
-    if (number % 2 === 0) {
-      return { number: number * 2 };
-    } else {
-      return { number: number * 3 };
-    }
-  }
+function Content() {
+  console.log("Content");
+  return (
+    <Consumer>
+      {(contextValue) => (
+        <div style={{ ...style, border: `5px solid ${contextValue.color}` }}>
+          Content
+          <button
+            style={{ color: "red" }}
+            onClick={() => contextValue.changeColor("red")}
+          >
+            变红
+          </button>
+          <button
+            style={{ color: "green" }}
+            onClick={() => contextValue.changeColor("green")}
+          >
+            变绿
+          </button>
+        </div>
+      )}
+    </Consumer>
+  );
+}
+class Main extends React.Component {
+  static contextType = ThemeContext;
   render() {
-    console.log("child-render", this.state);
-    return <div>{this.state.number}</div>;
+    console.log("Main");
+    return (
+      <div style={{ ...style, border: `5px solid ${this.context.color}` }}>
+        Main
+        <Content />
+      </div>
+    );
   }
 }
 
-ReactDOM.render(<Counter />, document.getElementById("root"));
+class Page extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { color: "black" };
+  }
+  changeColor = (color) => {
+    this.setState({ color });
+  };
+
+  render() {
+    console.log("Page");
+    let contextValue = {
+      color: this.state.color,
+      changeColor: this.changeColor,
+    };
+    return (
+      <Provider value={contextValue}>
+        <div
+          style={{
+            ...style,
+            width: "250px",
+            border: `5px solid ${this.state.color}`,
+          }}
+        >
+          Page
+          <Header />
+          <Main />
+        </div>
+      </Provider>
+    );
+  }
+}
+ReactDOM.render(<Page />, document.getElementById("root"));

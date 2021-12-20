@@ -94,6 +94,9 @@ export class Component {
   forceUpdate() {
     const oldRenderVdom = this.oldRenderVdom; // 旧的vdom
     const oldDOM = findDOM(oldRenderVdom); // 旧的dom
+    if (this.constructor.contextType) {
+      this.context = this.constructor.contextType._currentValue;
+    }
     if (this.constructor.getDerivedStateFromProps) {
       const newState = this.constructor.getDerivedStateFromProps(
         this.props,

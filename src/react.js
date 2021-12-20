@@ -1,5 +1,5 @@
 import { wrapToVdom } from "./utils";
-import { REACT_ELEMENT, REACT_FORWARD_REF_TYPE, REACT_FRAGMENT } from "./constants";
+import { REACT_ELEMENT, REACT_FORWARD_REF_TYPE, REACT_FRAGMENT, REACT_PROVIDER, REACT_CONTEXT } from "./constants";
 import { Component } from "./component";
 
 function createElement(type, config, children) {
@@ -40,11 +40,25 @@ function forwardRef(render) {
   return elementType;
 }
 
+function createContext() {
+  const context = { $$typeof: REACT_CONTEXT }
+  context.Provider = {
+    $$typeof: REACT_PROVIDER,
+    _context: context
+  }
+  context.Consumer = {
+    $$typeof: REACT_CONTEXT,
+    _context: context
+  }
+  return context
+}
+
 const React = {
   createElement,
   Component,
   createRef,
   forwardRef,
+  createContext,
   Fragment: REACT_FRAGMENT
 };
 
