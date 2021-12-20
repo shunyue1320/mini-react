@@ -94,12 +94,23 @@ export class Component {
   forceUpdate() {
     const oldRenderVdom = this.oldRenderVdom; // 旧的vdom
     const oldDOM = findDOM(oldRenderVdom); // 旧的dom
+    if (this.constructor.getDerivedStateFromProps) {
+      const newState = this.constructor.getDerivedStateFromProps(
+        this.props,
+        this.state
+      );
+      if (newState) {
+        this.state = { ...this.state, ...newState };
+      }
+    }
     const newRenderVdom = this.render(); // 其实就是执行 React.createElement 生成新的 vdom
+    const snapshot =
+      this.getSnapshotBeforeUpdate && this.getSnapshotBeforeUpdate();
     compareTwoVdom(oldDOM.parentNode, oldRenderVdom, newRenderVdom); // (父节点，旧dom， 新dom) 给两个 vdom 进行 diff 对比渲染页面
     this.oldRenderVdom = newRenderVdom;
 
     if (this.componentDidUpdate) {
-      this.componentDidUpdate(this.props, this.state);
+      this.componentDidUpdate(this.props, this.state, snapshot);
     }
   }
 }
