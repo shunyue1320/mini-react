@@ -32,28 +32,27 @@ export function useRef(initialState) {
 export function useLayoutEffect(callback, deps) {
   let currentIndex = hookIndex;
   if (hookStates[hookIndex]) {
-      let [lastDestroy, oldDeps] = hookStates[hookIndex];
-      let same = deps && deps.every((dep, index) => dep === oldDeps[index]);
-      if (same) {
-          hookIndex++;
-      } else {
-          lastDestroy && lastDestroy();
-          queueMicrotask(() => {
-              //执行callback函数,返回一个销毁函数
-              let destroy = callback();
-              hookStates[currentIndex] = [destroy, deps];
-
-          });
-          hookIndex++;
-      }
-  } else {
-      //开启一个新的微任务
-      queueMicrotask(() => {
-          //执行callback函数,返回一个销毁函数
-          let destroy = callback();
-          hookStates[currentIndex] = [destroy, deps];
-      })
+    let [lastDestroy, oldDeps] = hookStates[hookIndex];
+    let same = deps && deps.every((dep, index) => dep === oldDeps[index]);
+    if (same) {
       hookIndex++;
+    } else {
+      lastDestroy && lastDestroy();
+      queueMicrotask(() => {
+        //执行callback函数,返回一个销毁函数
+        let destroy = callback();
+        hookStates[currentIndex] = [destroy, deps];
+      });
+      hookIndex++;
+    }
+  } else {
+    //开启一个新的微任务
+    queueMicrotask(() => {
+      //执行callback函数,返回一个销毁函数
+      let destroy = callback();
+      hookStates[currentIndex] = [destroy, deps];
+    });
+    hookIndex++;
   }
 }
 
@@ -65,7 +64,7 @@ export function useEffect(callback, deps) {
     if (memo) {
       hookIndex++;
     } else {
-      oldDestroy && oldDestroy()
+      oldDestroy && oldDestroy();
       //开启一个新的宏任务
       let timer = setTimeout(() => {
         const destroy = callback();
@@ -107,6 +106,10 @@ export function useReducer(reducer, initialState) {
   return [hookStates[hookIndex++], dispatch];
 }
 
+export function useState(initialState) {
+  return useReducer(null, initialState);
+}
+
 export function useCallback(callback, deps) {
   if (hookStates[hookIndex]) {
     const [oldCallback, oldDeps] = hookStates[hookIndex];
@@ -141,16 +144,6 @@ export function useMemo(factory, deps) {
     hookStates[hookIndex++] = [newMemo, deps];
     return newMemo;
   }
-}
-
-export function useState(initialState) {
-  hookStates[hookIndex] = hookStates[hookIndex] || initialState; // 避免更新时执行 useState 重新赋值
-  const currentIndex = hookIndex;
-  function setState(newState) {
-    hookStates[currentIndex] = newState;
-    scheduleUpdate();
-  }
-  return [hookStates[hookIndex++], setState];
 }
 
 /******** hooks end  ********/
@@ -264,6 +257,7 @@ function mountClassComponent(vdom) {
   vdom.classInstance = classInstance;
   if (ref) {
     ref.current = classInstance; // 给 React.createRef() 放上 class组件实例
+    classInstance.ref = ref;
   }
   if (classInstance.componentWillMount) {
     classInstance.componentWillMount();
@@ -276,6 +270,10 @@ function mountClassComponent(vdom) {
     dom.componentDidMount = classInstance.componentDidMount.bind(this);
   }
   return dom;
+}
+
+export function useImperativeHandle(ref, handler) {
+  ref.current = handler();
 }
 
 // 执行这个函数组件 传递组件上的参数

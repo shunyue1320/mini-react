@@ -17,6 +17,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useImperativeHandle,
 } from "./react-dom";
 
 function createElement(type, config, children) {
@@ -96,6 +97,7 @@ const React = {
   useEffect,
   useLayoutEffect,
   useRef,
+  useImperativeHandle,
 };
 
 export default React;

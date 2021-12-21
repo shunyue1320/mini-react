@@ -1,21 +1,37 @@
 import React from "./react";
 import ReactDOM from "./react-dom";
 
-const Animate = ()=>{
-  const ref = React.useRef();
-  // React.useEffect(() => {
-  React.useLayoutEffect(() => { // 等待 dom 渲染完成后更新页面
-    ref.current.style.transform = `translate(500px)`; //TODO
-    ref.current.style.transition = `all 500ms`;
-  });
-  let style = {
-    width: '100px',
-    height: '100px',
-    borderRadius: '50%',
-    backgroundColor: 'red'
+function Child(props, ref) {
+  const inputRef = React.useRef();
+  React.useImperativeHandle(ref, () => ({
+    focus() {
+      inputRef.current.focus();
+    },
+  }));
+  return <input type="text" ref={inputRef} />;
+}
+const ForwardChild = React.forwardRef(Child); // forwardRef 作用就是给 Child 传递 ref 参数
+
+function Parent() {
+  let [number, setNumber] = React.useState(0);
+  const inputRef = React.useRef();
+  function getFocus() {
+    console.log(inputRef.current);
+    inputRef.current.focus();
   }
   return (
-    <div style={style} ref={ref}></div>
-  )
+    <div>
+      <ForwardChild ref={inputRef} />
+      <button onClick={getFocus}>获得焦点</button>
+      <p>{number}</p>
+      <button
+        onClick={() => {
+          setNumber(number + 1);
+        }}
+      >
+        +
+      </button>
+    </div>
+  );
 }
-ReactDOM.render(<Animate/>,document.getElementById('root'));
+ReactDOM.render(<Parent />, document.getElementById("root"));
