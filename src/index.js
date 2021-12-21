@@ -1,25 +1,21 @@
 import React from "./react";
 import ReactDOM from "./react-dom";
 
-function Counter() {
-  const [number, setNumber] = React.useState(0);
-  React.useEffect(() => {
-    console.log("开启一个新的定时器");
-    const $timer = setInterval(() => {
-      setNumber(number + 1);
-    }, 1000);
-    return () => {
-      console.log("销毁老的定时器");
-      clearInterval($timer);
-    };
+const Animate = ()=>{
+  const ref = React.useRef();
+  // React.useEffect(() => {
+  React.useLayoutEffect(() => { // 等待 dom 渲染完成后更新页面
+    ref.current.style.transform = `translate(500px)`; //TODO
+    ref.current.style.transition = `all 500ms`;
   });
-
-  React.useEffect(() => {
-    console.log("number - 改变");
-    return () => {
-      console.log("销毁");
-    };
-  }, [ number ]);
-  return <p>{number}</p>;
+  let style = {
+    width: '100px',
+    height: '100px',
+    borderRadius: '50%',
+    backgroundColor: 'red'
+  }
+  return (
+    <div style={style} ref={ref}></div>
+  )
 }
-ReactDOM.render(<Counter />, document.getElementById("root"));
+ReactDOM.render(<Animate/>,document.getElementById('root'));
