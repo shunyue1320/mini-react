@@ -9,9 +9,33 @@ import {
 } from "./constants";
 import { addEvent } from "./event";
 
+const hookStates = [];
+let hookIndex = 0;
+let scheduleUpdate;
+
 function render(vdom, container) {
   mount(vdom, container);
+  scheduleUpdate = () => {
+    hookIndex = 0;
+    compareTwoVdom(container, vdom, vdom);
+  };
 }
+
+/******** hooks start  ********/
+
+export function useState(initialState) {
+  hookStates[hookIndex] = hookStates[hookIndex] || initialState; // 避免更新时执行 useState 重新赋值
+  const currentIndex = hookIndex;
+  function setState(newState){
+    hookStates[currentIndex] = newState
+    scheduleUpdate()
+  }
+  return [hookStates[hookIndex++], setState]
+}
+
+/******** hooks end  ********/
+
+
 export function mount(vdom, container) {
   const newDOM = createDOM(vdom);
   if (newDOM) {
@@ -230,11 +254,11 @@ function unMountVdom(vdom) {
 // 作用： 对比更新 新老节点
 function updateElement(oldVdom, newVdom) {
   if (oldVdom.type.$$typeof === REACT_PROVIDER) {
-    updateProviderComponent(oldVdom, newVdom)
+    updateProviderComponent(oldVdom, newVdom);
   } else if (oldVdom.type.$$typeof === REACT_CONTEXT) {
-    updateConsumerComponent(oldVdom, newVdom)
+    updateConsumerComponent(oldVdom, newVdom);
   } else if (oldVdom.type === REACT_TEXT && newVdom.type === REACT_TEXT) {
-    const currentDOM = newVdom.dom = findDOM(oldVdom);
+    const currentDOM = (newVdom.dom = findDOM(oldVdom));
     if (oldVdom.props.content !== newVdom.props.content) {
       currentDOM.textContent = newVdom.props.content;
     }
@@ -253,14 +277,14 @@ function updateElement(oldVdom, newVdom) {
   }
 }
 
-// 
+//
 function updateProviderComponent(oldVdom, newVdom) {
   const parentDOM = findDOM(oldVdom).parentNode;
-  const { type, props } = newVdom
+  const { type, props } = newVdom;
   const context = type._context;
   context._currentValue = props.value;
   const renderVdom = props.children;
-  compareTwoVdom(parentDOM, oldVdom.oldRenderVdom, renderVdom)
+  compareTwoVdom(parentDOM, oldVdom.oldRenderVdom, renderVdom);
   newVdom.oldRenderVdom = renderVdom;
 }
 
