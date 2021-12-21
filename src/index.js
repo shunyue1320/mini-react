@@ -1,11 +1,13 @@
 import React from "./react";
 import ReactDOM from "./react-dom";
 
-function reducer(state = { number: 0 }, action) {
+const CounterContext = React.createContext();
+
+function reducer(state, action) {
   switch (action.type) {
-    case "ADD":
+    case "add":
       return { number: state.number + 1 };
-    case "MINUS":
+    case "minus":
       return { number: state.number - 1 };
     default:
       return state;
@@ -13,13 +15,23 @@ function reducer(state = { number: 0 }, action) {
 }
 
 function Counter() {
-  const [state, dispatch] = React.useReducer(reducer, { number: 0 });
+  let { state, dispatch } = React.useContext(CounterContext);
   return (
     <div>
-      Count: {state.number}
-      <button onClick={() => dispatch({ type: "ADD" })}>+</button>
-      <button onClick={() => dispatch({ type: "MINUS" })}>-</button>
+      <p>{state.number}</p>
+      <button onClick={() => dispatch({ type: "add" })}>+</button>
+      <button onClick={() => dispatch({ type: "minus" })}>-</button>
     </div>
   );
 }
-ReactDOM.render(<Counter />, document.getElementById("root"));
+
+function App() {
+  const [state, dispatch] = React.useReducer(reducer, { number: 0 });
+  return (
+    <CounterContext.Provider value={{ state, dispatch }}>
+      <Counter />
+    </CounterContext.Provider>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));

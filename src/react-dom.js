@@ -23,6 +23,10 @@ function render(vdom, container) {
 }
 
 /******** hooks start  ********/
+export function useContext(context){
+  return context._currentValue;
+}
+
 export function useReducer(reducer, initialState) {
   hookStates[hookIndex] = hookStates[hookIndex] || initialState;
   const currentIndex = hookIndex;
