@@ -2,6 +2,7 @@ import {
   REACT_TEXT,
   REACT_FORWARD_REF_TYPE,
   PLACEMENT,
+  REACT_MEMO,
   MOVE,
   REACT_FRAGMENT,
   REACT_PROVIDER,
@@ -22,19 +23,53 @@ function render(vdom, container) {
 }
 
 /******** hooks start  ********/
+export function useCallback(callback, deps) {
+  if (hookStates[hookIndex]) {
+    const [oldCallback, oldDeps] = hookStates[hookIndex];
+    const memo = deps.every((value, index) => value === oldDeps[index]);
+    if (memo) {
+      hookIndex++;
+      return oldCallback;
+    } else {
+      hookStates[hookIndex++] = [callback, deps];
+      return callback;
+    }
+  } else {
+    hookStates[hookIndex++] = [callback, deps];
+    return callback;
+  }
+}
+
+export function useMemo(factory, deps) {
+  if (hookStates[hookIndex]) {
+    const [oldMemo, oldDeps] = hookStates[hookIndex];
+    const memo = deps.every((value, index) => value === oldDeps[index]);
+    if (memo) {
+      hookIndex++;
+      return oldMemo;
+    } else {
+      const newMemo = factory();
+      hookStates[hookIndex++] = [newMemo, deps];
+      return newMemo;
+    }
+  } else {
+    const newMemo = factory();
+    hookStates[hookIndex++] = [newMemo, deps];
+    return newMemo;
+  }
+}
 
 export function useState(initialState) {
   hookStates[hookIndex] = hookStates[hookIndex] || initialState; // 避免更新时执行 useState 重新赋值
   const currentIndex = hookIndex;
-  function setState(newState){
-    hookStates[currentIndex] = newState
-    scheduleUpdate()
+  function setState(newState) {
+    hookStates[currentIndex] = newState;
+    scheduleUpdate();
   }
-  return [hookStates[hookIndex++], setState]
+  return [hookStates[hookIndex++], setState];
 }
 
 /******** hooks end  ********/
-
 
 export function mount(vdom, container) {
   const newDOM = createDOM(vdom);
@@ -49,8 +84,12 @@ export function createDOM(vdom) {
   const { type, props, ref } = vdom;
   let dom;
 
-  // Provider 组件
-  if (type && type.$$typeof === REACT_PROVIDER) {
+  // memo 组件
+  if (type && type.$$typeof === REACT_MEMO) {
+    return mountMemoComponent(vdom);
+
+    //  Provider 组件
+  } else if (type && type.$$typeof === REACT_PROVIDER) {
     return mountProviderComponent(vdom);
 
     // Consumer 组件
@@ -90,6 +129,15 @@ export function createDOM(vdom) {
   }
 
   return dom;
+}
+
+// 挂载 Memo 组件
+function mountMemoComponent(vdom) {
+  const { type, props } = vdom;
+  const renderVdom = type.type(props);
+  vdom.prevProps = props;
+  vdom.oldRenderVdom = renderVdom;
+  return createDOM(renderVdom);
 }
 
 // 挂载 Provider 组件
@@ -253,7 +301,9 @@ function unMountVdom(vdom) {
 
 // 作用： 对比更新 新老节点
 function updateElement(oldVdom, newVdom) {
-  if (oldVdom.type.$$typeof === REACT_PROVIDER) {
+  if (oldVdom.type && oldVdom.type.$$typeof === REACT_MEMO) {
+    updateMemoComponent(oldVdom, newVdom);
+  } else if (oldVdom.type.$$typeof === REACT_PROVIDER) {
     updateProviderComponent(oldVdom, newVdom);
   } else if (oldVdom.type.$$typeof === REACT_CONTEXT) {
     updateConsumerComponent(oldVdom, newVdom);
@@ -277,7 +327,22 @@ function updateElement(oldVdom, newVdom) {
   }
 }
 
-//
+function updateMemoComponent(oldVdom, newVdom) {
+  let { type, prevProps } = oldVdom;
+  if (!type.compare(prevProps, newVdom.props)) {
+    // 对象浅比较 shallowEqual
+    const parentDOM = findDOM(oldVdom).parentNode;
+    const { type, props } = newVdom;
+    const renderVdom = type.type(props);
+    compareTwoVdom(parentDOM, oldVdom.oldRenderVdom, renderVdom);
+    newVdom.prevProps = props;
+    newVdom.oldRenderVdom = renderVdom;
+  } else {
+    newVdom.prevProps = prevProps;
+    newVdom.oldRenderVdom = oldVdom.oldRenderVdom;
+  }
+}
+
 function updateProviderComponent(oldVdom, newVdom) {
   const parentDOM = findDOM(oldVdom).parentNode;
   const { type, props } = newVdom;

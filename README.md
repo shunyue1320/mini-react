@@ -2,32 +2,61 @@
 
 迷你版本 react 用于学习
 
-## useState
-1. useState 就是一个 Hook
-2. 通过在函数组件里调用它来给组件添加一些内部 state,React 会在重复渲染时保留这个 state
-3. useState 会返回一对值：当前状态和一个让你更新它的函数，你可以在事件处理函数中或其他一些地方调用这个函数。它类似 class 组件的 this.setState，但是它不会把新的 state 和旧的 state 进行合并
-4. useState 唯一的参数就是初始 state
-5. 返回一个 state，以及更新 state 的函数
-6. 在初始渲染期间，返回的状态 (state) 与传入的第一个参数 (initialState) 值相同
-7. setState 函数用于更新 state。它接收一个新的 state 值并将组件的一次重新渲染加入队列
+## useCallback
+
+把内联回调函数及依赖项数组作为参数传入 useCallback，它将返回该回调函数的 memoized 版本，该回调函数仅在某个依赖项改变时才会更新  
+简要：参数2没值改变，则返回的函数内存地址不变  
+`（如果每次更新父组件执行返回不同内存地址的函数，该函数传递给子组件，子组件检测到参数改变就要触发更新了）`
+
+## useMemo
+
+把创建函数和依赖项数组作为参数传入 useMemo，它仅会在某个依赖项改变时才重新计算 memoized 值。这种优化有助于避免在每次渲染时都进行高开销的计算   
+简要：参数2有值发生改变，执行参数1函数，返回参数1函数执行的结果
+
 ```js
 import React from "./react";
 import ReactDOM from "./react-dom";
 
+let Child = ({ data, handleClick }) => {
+  console.log("Child render");
+  return <button onClick={handleClick}>{data.number}</button>;
+};
+Child = React.memo(Child);
 
-function App(){
-  const[number,setNumber]=React.useState(0);
-  let handleClick = ()=> setNumber(number+1)
+function App() {
+  console.log("App render");
+  const [name, setName] = React.useState("小明");
+  const [number, setNumber] = React.useState(0);
+
+  const data = React.useMemo(() => {
+    console.log('run useMemo')
+    return { number }
+  }, [number]);
+
+  const handleClick = React.useCallback(() => {
+    console.log('run useCallback')
+    setNumber(number + 1)
+  }, [number]);
   return (
     <div>
-      <p>{number}</p>
-      <button onClick={handleClick}>+</button>
+      <input
+        type="text"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+      />
+      <Child data={data} handleClick={handleClick} />
     </div>
-  )
+  );
 }
 
-ReactDOM.render(
-  <App />,
-  document.getElementById('root')
-);
+ReactDOM.render(<App />, document.getElementById("root"));
+
 ```
+
+
+## memo
+浅比较函数参数， 参数不变不触发函数更新
+
+## PureComponent
+内部通过 shouldComponentUpdate 实现， 众所周知当 shouldComponentUpdate 返回 true 时更新组件
+通过对新旧 state 和 新旧 props 浅对比，不相等时返回 true 更新组件

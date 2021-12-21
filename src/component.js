@@ -1,4 +1,5 @@
 import { findDOM, compareTwoVdom } from "./react-dom";
+import { shallowEqual } from "./utils.js";
 export const updateQueue = {
   isBatchingUpdate: false,
   updaters: new Set(),
@@ -115,5 +116,12 @@ export class Component {
     if (this.componentDidUpdate) {
       this.componentDidUpdate(this.props, this.state, snapshot);
     }
+  }
+}
+
+export class PureComponent extends Component {
+  shouldComponentUpdate(newProps, nextState) {
+      // 如果新属性和老属性不相等 或者新状态和老状态不相等 就更新组件
+      return !shallowEqual(this.props, newProps) || !shallowEqual(this.state, nextState)
   }
 }
