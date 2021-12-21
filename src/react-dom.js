@@ -23,7 +23,35 @@ function render(vdom, container) {
 }
 
 /******** hooks start  ********/
-export function useContext(context){
+export function useEffect(callback, deps) {
+  const currentIndex = hookIndex;
+  if (hookStates[hookIndex]) {
+    const [oldDestroy, oldDeps] = hookStates[hookIndex];
+    const memo = deps && deps.every((value, index) => value === oldDeps[index]);
+    if (memo) {
+      hookIndex++;
+    } else {
+      oldDestroy && oldDestroy()
+      //开启一个新的宏任务
+      let timer = setTimeout(() => {
+        const destroy = callback();
+        hookStates[currentIndex] = [destroy, deps];
+        clearTimeout(timer);
+      });
+      hookIndex++;
+    }
+  } else {
+    //开启一个新的宏任务
+    let timer = setTimeout(() => {
+      const destroy = callback();
+      hookStates[currentIndex] = [destroy, deps];
+      clearTimeout(timer);
+    });
+    hookIndex++;
+  }
+}
+
+export function useContext(context) {
   return context._currentValue;
 }
 
@@ -48,7 +76,7 @@ export function useReducer(reducer, initialState) {
 export function useCallback(callback, deps) {
   if (hookStates[hookIndex]) {
     const [oldCallback, oldDeps] = hookStates[hookIndex];
-    const memo = deps.every((value, index) => value === oldDeps[index]);
+    const memo = deps && deps.every((value, index) => value === oldDeps[index]);
     if (memo) {
       hookIndex++;
       return oldCallback;
@@ -65,7 +93,7 @@ export function useCallback(callback, deps) {
 export function useMemo(factory, deps) {
   if (hookStates[hookIndex]) {
     const [oldMemo, oldDeps] = hookStates[hookIndex];
-    const memo = deps.every((value, index) => value === oldDeps[index]);
+    const memo = deps && deps.every((value, index) => value === oldDeps[index]);
     if (memo) {
       hookIndex++;
       return oldMemo;

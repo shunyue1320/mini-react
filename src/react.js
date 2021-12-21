@@ -14,6 +14,7 @@ import {
   useCallback,
   useReducer,
   useContext,
+  useEffect,
 } from "./react-dom";
 
 function createElement(type, config, children) {
@@ -90,6 +91,7 @@ const React = {
   useCallback,
   useReducer,
   useContext,
+  useEffect,
 };
 
 export default React;
