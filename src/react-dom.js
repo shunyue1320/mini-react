@@ -23,6 +23,24 @@ function render(vdom, container) {
 }
 
 /******** hooks start  ********/
+export function useReducer(reducer, initialState) {
+  hookStates[hookIndex] = hookStates[hookIndex] || initialState;
+  const currentIndex = hookIndex;
+  function dispatch(action) {
+    const oldState = hookStates[currentIndex];
+    // 如果有reducer就使用reducer计算新状态
+    if (reducer) {
+      let newState = reducer(oldState, action);
+      hookStates[currentIndex] = newState;
+    } else {
+      let newState = typeof action === "function" ? action(oldState) : action;
+      hookStates[currentIndex] = newState;
+    }
+    scheduleUpdate();
+  }
+  return [hookStates[hookIndex++], dispatch];
+}
+
 export function useCallback(callback, deps) {
   if (hookStates[hookIndex]) {
     const [oldCallback, oldDeps] = hookStates[hookIndex];
