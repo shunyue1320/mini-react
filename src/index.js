@@ -1,37 +1,18 @@
-import React from "./react";
-import ReactDOM from "./react-dom";
+import React from "react";
+import ReactDOM from "react-dom";
+import { HashRouter as Router, Route } from "../react-router-dom";
 
-function Child(props, ref) {
-  const inputRef = React.useRef();
-  React.useImperativeHandle(ref, () => ({
-    focus() {
-      inputRef.current.focus();
-    },
-  }));
-  return <input type="text" ref={inputRef} />;
-}
-const ForwardChild = React.forwardRef(Child); // forwardRef 作用就是给 Child 传递 ref 参数
+import Home from "./components/Home";
+import User from "./components/User";
+import Profile from "./components/Profile";
 
-function Parent() {
-  let [number, setNumber] = React.useState(0);
-  const inputRef = React.useRef();
-  function getFocus() {
-    console.log(inputRef.current);
-    inputRef.current.focus();
-  }
-  return (
+ReactDOM.render(
+  <Router>
     <div>
-      <ForwardChild ref={inputRef} />
-      <button onClick={getFocus}>获得焦点</button>
-      <p>{number}</p>
-      <button
-        onClick={() => {
-          setNumber(number + 1);
-        }}
-      >
-        +
-      </button>
+      <Route path="/" component={Home} exact />
+      <Route path="/user" component={User} />
+      <Route path="/profile" component={Profile} />
     </div>
-  );
-}
-ReactDOM.render(<Parent />, document.getElementById("root"));
+  </Router>,
+  document.getElementById("root")
+);
