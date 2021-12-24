@@ -2,6 +2,7 @@ import React from "react";
 import { Router } from "../react-router";
 import { createBrowserHistory } from "history";
 
+// 作用： 创建 浏览器路由 传递给 Router
 class BrowserRouter extends React.Component {
   // 不管是哪种创建历史对象的方法，得到的history 长的都一样，都像window.history
   history = createBrowserHistory(this.props);
