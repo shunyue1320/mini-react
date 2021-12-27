@@ -1,18 +1,16 @@
 import React from "react";
-export default class Home extends React.Component {
-  render() {
-    console.log(this.props);
+import { useNavigate } from "../react-router-dom";
+
+function Home() {
+    let navigate = useNavigate();
+    function navigateTo() {
+        navigate('/profile');
+    }
     return (
-      <div>
-        <p>Home</p>
-        <button
-          onClick={() =>
-            this.props.history.push({ pathname: "/user", state: { id: 1 } })
-          }
-        >
-          跳转到/user
-        </button>
-      </div>
-    );
-  }
+        <div>
+            <p>Home</p>
+            <button onClick={navigateTo}>跳转到/profile</button>
+        </div>
+    )
 }
+export default Home;

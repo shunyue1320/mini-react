@@ -1,12 +1,19 @@
 import React from "react";
-export default class User extends React.Component {
-  render() {
-    console.log(this.props.location.state);
-    return (
-      <div>
-        <p>User</p>
-        <button onClick={() => this.props.history.goBack()}>返回</button>
-      </div>
-    );
-  }
+
+import { Link } from "../react-router-dom";
+function User() {
+  return (
+    <div>
+      <ul>
+        <li>
+          <Link to="/user/list">用户列表</Link>
+        </li>
+        <li>
+          <Link to="/user/add">新增用户</Link>
+        </li>
+      </ul>
+      <div></div>
+    </div>
+  );
 }
+export default User;
