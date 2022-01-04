@@ -17,8 +17,11 @@ function Counter1() {
       <p>{state.number}</p>
       <button onClick={() => boundActionCreators.add1(5)}>+</button>
       <button onClick={boundActionCreators.minus1}>-</button>
+      <button onClick={boundActionCreators.thunkAdd1}>thunkAdd</button>
+      <button onClick={boundActionCreators.promise1Add}>promise1Add</button>
+      <button onClick={boundActionCreators.promise2Add}>promise2Add</button>
     </div>
-  )
+  );
 }
 
 export default Counter1;
