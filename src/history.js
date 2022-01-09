@@ -1,5 +1,5 @@
 import { createBrowserHistory } from "history";
-import { createReduxHistoryContext } from "redux-first-history";
+import { createReduxHistoryContext } from "./redux-first-history";
 
 const {
   routerReducer, // 合并reducers里的 reducer

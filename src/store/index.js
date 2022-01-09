@@ -1,4 +1,4 @@
-import { createStore, applyMiddleware } from "../packages/redux";
+import { createStore, applyMiddleware } from "redux";
 import combinedReducer from "./reducers";
 import { createReduxHistory, routerMiddleware } from "../history";
 
@@ -6,7 +6,7 @@ import { createReduxHistory, routerMiddleware } from "../history";
 // const store = createStore(combinedReducer);
 export const store = applyMiddleware(routerMiddleware)(createStore)(combinedReducer);
 
-// 返回 新history，重写 push  方法
+// 返回 新history，重写 push replace 方法
 export const history = createReduxHistory(store);
 
 window.store = store;
