@@ -1,9 +1,10 @@
-import { combineReducers } from '../../packages/redux';
-import counter1 from './counter1';
-import counter2 from './counter2';
+import { combineReducers } from "redux";
+import { routerReducer } from "../../history";
+import counter from "./counter";
+
 let reducers = {
-    counter1,
-    counter2
-}
+  router: routerReducer,
+  counter,
+};
 let combinedReducer = combineReducers(reducers);
 export default combinedReducer;
