@@ -1,12 +1,11 @@
 import { createStore, applyMiddleware } from "redux";
-import combinedReducer from "./reducers";
-import { createReduxHistory, routerMiddleware } from "../history";
+import createSagaMiddleware from "../redux-saga";
+import rootSaga from "./rootSaga";
+import reducer from "./reducer";
 
-// 没有中间件的写法
-// const store = createStore(combinedReducer);
-export const store = applyMiddleware(routerMiddleware)(createStore)(combinedReducer);
+const sageMiddleware = createSagaMiddleware();
+const store = applyMiddleware(sageMiddleware)(createStore)(reducer);
 
-// 返回 新history，重写 push replace 方法
-export const history = createReduxHistory(store);
+sageMiddleware.run(rootSaga);
 
-window.store = store;
+export default store;
